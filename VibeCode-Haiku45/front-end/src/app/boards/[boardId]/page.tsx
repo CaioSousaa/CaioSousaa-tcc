@@ -63,6 +63,7 @@ export default function BoardDetail() {
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
   const [editingCardTitle, setEditingCardTitle] = useState("");
   const [editingCardDescription, setEditingCardDescription] = useState("");
+  const [editingCardDueDate, setEditingCardDueDate] = useState("");
   const [deleteConfirmCardId, setDeleteConfirmCardId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -225,6 +226,7 @@ export default function BoardDetail() {
       const updated = await updateCard(cardId, {
         title: editingCardTitle,
         description: editingCardDescription,
+        dueDate: editingCardDueDate || null,
       });
       const newCards = new Map(cards);
       for (const [listId, listCards] of newCards) {
@@ -676,6 +678,12 @@ export default function BoardDetail() {
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             rows={2}
                           />
+                          <input
+                            type="date"
+                            value={editingCardDueDate}
+                            onChange={(e) => setEditingCardDueDate(e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                          />
 
                           {(() => {
                             const cardChecklists = checklists.get(card.id) || [];
@@ -848,6 +856,29 @@ export default function BoardDetail() {
                           {card.description && (
                             <p className="text-xs text-gray-600 mt-1">{card.description}</p>
                           )}
+
+                          {card.dueDate && (() => {
+                            const due = new Date(card.dueDate);
+                            const today = new Date();
+                            today.setHours(0, 0, 0, 0);
+                            due.setHours(0, 0, 0, 0);
+                            const isOverdue = due < today;
+                            const daysUntil = Math.ceil((due.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+
+                            return (
+                              <div
+                                className={`mt-2 px-2 py-1 rounded text-xs font-medium ${
+                                  isOverdue
+                                    ? "bg-red-100 text-red-700"
+                                    : daysUntil <= 3
+                                      ? "bg-yellow-100 text-yellow-700"
+                                      : "bg-green-100 text-green-700"
+                                }`}
+                              >
+                                📅 {isOverdue ? "Atrasado" : daysUntil === 0 ? "Hoje" : `${daysUntil}d`}
+                              </div>
+                            );
+                          })()}
 
                           {(assignees.get(card.id) || []).length > 0 && (
                             <div className="mt-2 flex flex-wrap gap-1">

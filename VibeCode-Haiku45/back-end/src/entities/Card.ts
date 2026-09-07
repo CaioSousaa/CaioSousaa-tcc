@@ -19,6 +19,9 @@ export class Card {
   @Column({ default: 0 })
   position!: number;
 
+  @Column({ type: "timestamp", nullable: true, default: null })
+  dueDate!: Date | null;
+
   @ManyToOne(() => List, (list) => list.cards, { onDelete: "CASCADE" })
   @JoinColumn({ name: "listId" })
   list!: List;

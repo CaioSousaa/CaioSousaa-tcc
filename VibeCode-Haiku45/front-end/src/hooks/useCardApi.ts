@@ -6,6 +6,7 @@ export interface Card {
   description?: string;
   position: number;
   listId: string;
+  dueDate?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -34,7 +35,7 @@ export const useCardApi = () => {
     return response.data;
   };
 
-  const updateCard = async (cardId: string, data: { title?: string; description?: string }): Promise<Card> => {
+  const updateCard = async (cardId: string, data: { title?: string; description?: string; dueDate?: string | null }): Promise<Card> => {
     const response = await apiClient.patch(`/api/cards/${cardId}`, data);
     return response.data;
   };

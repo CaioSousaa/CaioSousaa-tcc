@@ -70,7 +70,7 @@ export class CardService {
     return card;
   }
 
-  async updateCard(cardId: string, userId: string, data: { title?: string; description?: string }): Promise<Card> {
+  async updateCard(cardId: string, userId: string, data: { title?: string; description?: string; dueDate?: string | null }): Promise<Card> {
     const card = await this.getCardById(cardId, userId);
     if (!card) {
       throw new Error("Card not found");
@@ -85,6 +85,10 @@ export class CardService {
 
     if (data.description !== undefined) {
       card.description = data.description;
+    }
+
+    if (data.dueDate !== undefined) {
+      card.dueDate = data.dueDate ? new Date(data.dueDate) : null;
     }
 
     return this.cardRepository.save(card);

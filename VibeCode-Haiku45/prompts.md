@@ -63,3 +63,7 @@ Quero que o usuário consiga criar etiquetas coloridas e filtrar os cards por el
 Quero que o usuário consiga comentar nos cards e ver o histórico dos comentários
 
 ---
+
+### prompt 11
+
+Quero que o usuário consiga definir prazos nos cards e identificar quais estão atrasados
