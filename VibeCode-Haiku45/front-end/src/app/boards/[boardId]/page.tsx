@@ -5,6 +5,9 @@ import { useBoardApi, Board } from "@/hooks/useBoardApi";
 import { useListApi, ListItem } from "@/hooks/useListApi";
 import { useCardApi, Card } from "@/hooks/useCardApi";
 import { useChecklistApi, ChecklistItem } from "@/hooks/useChecklistApi";
+import { useLabelApi, Label } from "@/hooks/useLabelApi";
+import { useAssigneeApi, CardAssignee } from "@/hooks/useAssigneeApi";
+import { useMemberApi, BoardMember } from "@/hooks/useMemberApi";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -17,6 +20,9 @@ export default function BoardDetail() {
   const { getLists, createList, updateList, deleteList } = useListApi();
   const { getCards, createCard, updateCard, moveCard, deleteCard } = useCardApi();
   const { getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem } = useChecklistApi();
+  const { getLabels, createLabel, deleteLabel, addLabelToCard, removeLabelFromCard } = useLabelApi();
+  const { getAssignees, assignUser, removeAssignee } = useAssigneeApi();
+  const { getMembers, addMember } = useMemberApi();
 
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<ListItem[]>([]);
@@ -35,6 +41,16 @@ export default function BoardDetail() {
   const [checklists, setChecklists] = useState<Map<string, ChecklistItem[]>>(new Map());
   const [newChecklistItemCardId, setNewChecklistItemCardId] = useState<string | null>(null);
   const [newChecklistItemTitle, setNewChecklistItemTitle] = useState("");
+
+  const [labels, setLabels] = useState<Label[]>([]);
+  const [assignees, setAssignees] = useState<Map<string, CardAssignee[]>>(new Map());
+  const [members, setMembers] = useState<BoardMember[]>([]);
+  const [showMembersModal, setShowMembersModal] = useState(false);
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [newMemberRole, setNewMemberRole] = useState("editor");
+  const [newLabelName, setNewLabelName] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#3B82F6");
+  const [showNewLabel, setShowNewLabel] = useState(false);
 
   const [newCardListId, setNewCardListId] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState("");
@@ -58,6 +74,14 @@ export default function BoardDetail() {
 
       const cardsMap = new Map<string, Card[]>();
       const checklistsMap = new Map<string, ChecklistItem[]>();
+      const assigneesMap = new Map<string, CardAssignee[]>();
+
+      const labelsData = await getLabels(boardId);
+      setLabels(labelsData);
+
+      const membersData = await getMembers(boardId);
+      setMembers(membersData);
+
       for (const list of listsData) {
         const listCards = await getCards(list.id);
         cardsMap.set(list.id, listCards);
@@ -65,10 +89,14 @@ export default function BoardDetail() {
         for (const card of listCards) {
           const cardChecklists = await getChecklistItems(card.id);
           checklistsMap.set(card.id, cardChecklists);
+
+          const cardAssignees = await getAssignees(card.id);
+          assigneesMap.set(card.id, cardAssignees);
         }
       }
       setCards(cardsMap);
       setChecklists(checklistsMap);
+      setAssignees(assigneesMap);
       setError("");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao carregar quadro";
@@ -292,6 +320,70 @@ export default function BoardDetail() {
     }
   };
 
+  const handleAddLabel = async () => {
+    if (!newLabelName.trim()) {
+      setError("Nome da label é obrigatório");
+      return;
+    }
+    try {
+      const newLabel = await createLabel(boardId, newLabelName, newLabelColor);
+      setLabels([...labels, newLabel]);
+      setNewLabelName("");
+      setNewLabelColor("#3B82F6");
+      setShowNewLabel(false);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar label";
+      setError(errorMessage);
+    }
+  };
+
+  const handleToggleCardLabel = async (cardId: string, labelId: string, hasLabel: boolean) => {
+    try {
+      if (hasLabel) {
+        await removeLabelFromCard(cardId, labelId);
+      } else {
+        await addLabelToCard(cardId, labelId);
+      }
+      await loadBoardData();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao atualizar label";
+      setError(errorMessage);
+    }
+  };
+
+  const handleAddMember = async () => {
+    if (!newMemberEmail.trim()) {
+      setError("Email é obrigatório");
+      return;
+    }
+    try {
+      await addMember(boardId, newMemberEmail, newMemberRole);
+      const newMembers = await getMembers(boardId);
+      setMembers(newMembers);
+      setNewMemberEmail("");
+      setNewMemberRole("editor");
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao adicionar membro";
+      setError(errorMessage);
+    }
+  };
+
+  const handleAssignUser = async (cardId: string, memberId: string) => {
+    try {
+      const member = members.find((m) => m.id === memberId);
+      if (member) {
+        await assignUser(cardId, member.userId);
+        const newAssignees = await getAssignees(cardId);
+        const newMap = new Map(assignees);
+        newMap.set(cardId, newAssignees);
+        setAssignees(newMap);
+      }
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao atribuir usuário";
+      setError(errorMessage);
+    }
+  };
+
   if (isLoading) {
     return (
       <ProtectedRoute>
@@ -319,16 +411,62 @@ export default function BoardDetail() {
     <ProtectedRoute>
       <div className="min-h-screen" style={{ backgroundColor: `${board.color}20` }}>
         <header className="bg-white border-b border-gray-200">
-          <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
-            <div className="flex items-center gap-4">
-              <Link href="/boards" className="text-gray-600 hover:text-gray-900">
-                ←
-              </Link>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
-                {board.description && <p className="text-gray-600 text-sm">{board.description}</p>}
+          <div className="max-w-7xl mx-auto px-4 py-4">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-4">
+                <Link href="/boards" className="text-gray-600 hover:text-gray-900">
+                  ←
+                </Link>
+                <div>
+                  <h1 className="text-2xl font-bold text-gray-900">{board.title}</h1>
+                  {board.description && <p className="text-gray-600 text-sm">{board.description}</p>}
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => setShowMembersModal(true)}
+                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded transition"
+                >
+                  👥 Membros ({members.length})
+                </button>
+                <button
+                  onClick={() => setShowNewLabel(!showNewLabel)}
+                  className="px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 rounded transition"
+                >
+                  🏷️ Labels ({labels.length})
+                </button>
               </div>
             </div>
+
+            {showNewLabel && (
+              <div className="flex gap-2 mb-4">
+                <input
+                  type="text"
+                  value={newLabelName}
+                  onChange={(e) => setNewLabelName(e.target.value)}
+                  placeholder="Nome da label..."
+                  className="px-3 py-1 border border-gray-300 rounded text-sm"
+                />
+                <input
+                  type="color"
+                  value={newLabelColor}
+                  onChange={(e) => setNewLabelColor(e.target.value)}
+                  className="w-10 h-8 border border-gray-300 rounded"
+                />
+                <button
+                  onClick={handleAddLabel}
+                  className="px-3 py-1 bg-blue-900 text-white text-sm rounded hover:bg-blue-800"
+                >
+                  Criar
+                </button>
+                <button
+                  onClick={() => setShowNewLabel(false)}
+                  className="px-3 py-1 border border-gray-300 text-sm rounded hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+              </div>
+            )}
           </div>
         </header>
 
@@ -606,6 +744,16 @@ export default function BoardDetail() {
                           {card.description && (
                             <p className="text-xs text-gray-600 mt-1">{card.description}</p>
                           )}
+
+                          {(assignees.get(card.id) || []).length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-1">
+                              {(assignees.get(card.id) || []).map((assignee) => (
+                                <span key={assignee.id} className="text-xs bg-purple-100 text-purple-800 px-2 py-1 rounded">
+                                  {assignee.user.name.split(" ")[0]}
+                                </span>
+                              ))}
+                            </div>
+                          )}
                           {(() => {
                             const cardChecklists = checklists.get(card.id) || [];
                             if (cardChecklists.length > 0) {
@@ -746,6 +894,57 @@ export default function BoardDetail() {
             )}
           </div>
         </main>
+
+        {showMembersModal && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg p-6 max-w-md w-full mx-4">
+              <h2 className="text-xl font-bold mb-4">Membros ({members.length})</h2>
+
+              <div className="mb-4 space-y-2 max-h-48 overflow-y-auto">
+                {members.map((member) => (
+                  <div key={member.id} className="flex justify-between items-center p-2 bg-gray-50 rounded">
+                    <div>
+                      <p className="text-sm font-medium">{member.user.name}</p>
+                      <p className="text-xs text-gray-600">{member.user.email}</p>
+                      <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">{member.role}</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+
+              <div className="border-t pt-4">
+                <input
+                  type="email"
+                  value={newMemberEmail}
+                  onChange={(e) => setNewMemberEmail(e.target.value)}
+                  placeholder="Email do membro..."
+                  className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                />
+                <select
+                  value={newMemberRole}
+                  onChange={(e) => setNewMemberRole(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded mb-2"
+                >
+                  <option value="viewer">Visualizador</option>
+                  <option value="editor">Editor</option>
+                  <option value="admin">Admin</option>
+                </select>
+                <button
+                  onClick={handleAddMember}
+                  className="w-full px-3 py-2 bg-blue-900 text-white rounded hover:bg-blue-800 mb-2"
+                >
+                  Adicionar Membro
+                </button>
+                <button
+                  onClick={() => setShowMembersModal(false)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded hover:bg-gray-50"
+                >
+                  Fechar
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </ProtectedRoute>
   );
