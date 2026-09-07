@@ -3,6 +3,7 @@
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useBoardApi, Board } from "@/hooks/useBoardApi";
 import { useListApi, ListItem } from "@/hooks/useListApi";
+import { useCardApi, Card } from "@/hooks/useCardApi";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -13,16 +14,26 @@ export default function BoardDetail() {
   const router = useRouter();
   const { getBoard } = useBoardApi();
   const { getLists, createList, updateList, deleteList } = useListApi();
+  const { getCards, createCard, updateCard, moveCard, deleteCard } = useCardApi();
 
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<ListItem[]>([]);
+  const [cards, setCards] = useState<Map<string, Card[]>>(new Map());
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState("");
+
   const [showNewListForm, setShowNewListForm] = useState(false);
   const [newListTitle, setNewListTitle] = useState("");
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [deleteConfirmListId, setDeleteConfirmListId] = useState<string | null>(null);
+
+  const [newCardListId, setNewCardListId] = useState<string | null>(null);
+  const [newCardTitle, setNewCardTitle] = useState("");
+  const [editingCardId, setEditingCardId] = useState<string | null>(null);
+  const [editingCardTitle, setEditingCardTitle] = useState("");
+  const [editingCardDescription, setEditingCardDescription] = useState("");
+  const [deleteConfirmCardId, setDeleteConfirmCardId] = useState<string | null>(null);
 
   useEffect(() => {
     loadBoardData();
@@ -36,6 +47,13 @@ export default function BoardDetail() {
 
       const listsData = await getLists(boardId);
       setLists(listsData);
+
+      const cardsMap = new Map<string, Card[]>();
+      for (const list of listsData) {
+        const listCards = await getCards(list.id);
+        cardsMap.set(list.id, listCards);
+      }
+      setCards(cardsMap);
       setError("");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao carregar quadro";
@@ -50,10 +68,10 @@ export default function BoardDetail() {
       setError("Título da lista é obrigatório");
       return;
     }
-
     try {
       const newList = await createList(boardId, newListTitle);
       setLists([...lists, newList]);
+      setCards(new Map(cards).set(newList.id, []));
       setNewListTitle("");
       setShowNewListForm(false);
     } catch (err) {
@@ -67,7 +85,6 @@ export default function BoardDetail() {
       setError("Título é obrigatório");
       return;
     }
-
     try {
       const updated = await updateList(listId, { title: editingTitle });
       setLists(lists.map((l) => (l.id === listId ? updated : l)));
@@ -83,7 +100,10 @@ export default function BoardDetail() {
     try {
       await deleteList(listId);
       setLists(lists.filter((l) => l.id !== listId));
-      setDeleteConfirmId(null);
+      const newCards = new Map(cards);
+      newCards.delete(listId);
+      setCards(newCards);
+      setDeleteConfirmListId(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao deletar lista";
       setError(errorMessage);
@@ -92,16 +112,90 @@ export default function BoardDetail() {
 
   const handleReorderList = async (listId: string, newPosition: number) => {
     if (newPosition < 0 || newPosition >= lists.length) return;
-
     try {
-      const updatedList = await updateList(listId, { position: newPosition });
+      await updateList(listId, { position: newPosition });
       const currentIndex = lists.findIndex((l) => l.id === listId);
-
       const newLists = lists.filter((l) => l.id !== listId);
-      newLists.splice(newPosition, 0, updatedList);
+      newLists.splice(newPosition, 0, lists[currentIndex]);
       setLists(newLists);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao reordenar lista";
+      setError(errorMessage);
+    }
+  };
+
+  const handleCreateCard = async (listId: string) => {
+    if (!newCardTitle.trim()) {
+      setError("Título do card é obrigatório");
+      return;
+    }
+    try {
+      const newCard = await createCard(listId, newCardTitle);
+      const listCards = cards.get(listId) || [];
+      const newCards = new Map(cards);
+      newCards.set(listId, [...listCards, newCard]);
+      setCards(newCards);
+      setNewCardTitle("");
+      setNewCardListId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar card";
+      setError(errorMessage);
+    }
+  };
+
+  const handleUpdateCard = async (cardId: string) => {
+    try {
+      const updated = await updateCard(cardId, {
+        title: editingCardTitle,
+        description: editingCardDescription,
+      });
+      const newCards = new Map(cards);
+      for (const [listId, listCards] of newCards) {
+        const idx = listCards.findIndex((c) => c.id === cardId);
+        if (idx !== -1) {
+          listCards[idx] = updated;
+          break;
+        }
+      }
+      setCards(newCards);
+      setEditingCardId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao atualizar card";
+      setError(errorMessage);
+    }
+  };
+
+  const handleDeleteCard = async (cardId: string) => {
+    try {
+      await deleteCard(cardId);
+      const newCards = new Map(cards);
+      for (const [listId, listCards] of newCards) {
+        const filtered = listCards.filter((c) => c.id !== cardId);
+        if (filtered.length !== listCards.length) {
+          newCards.set(listId, filtered);
+          break;
+        }
+      }
+      setCards(newCards);
+      setDeleteConfirmCardId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao deletar card";
+      setError(errorMessage);
+    }
+  };
+
+  const handleMoveCard = async (cardId: string, fromListId: string, toListId: string) => {
+    try {
+      const listCards = cards.get(toListId) || [];
+      const newCard = await moveCard(cardId, toListId, listCards.length);
+
+      const newCards = new Map(cards);
+      const fromCards = newCards.get(fromListId) || [];
+      newCards.set(fromListId, fromCards.filter((c) => c.id !== cardId));
+      newCards.set(toListId, [...(newCards.get(toListId) || []), newCard]);
+      setCards(newCards);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao mover card";
       setError(errorMessage);
     }
   };
@@ -132,7 +226,6 @@ export default function BoardDetail() {
   return (
     <ProtectedRoute>
       <div className="min-h-screen" style={{ backgroundColor: `${board.color}20` }}>
-        {/* Header */}
         <header className="bg-white border-b border-gray-200">
           <div className="max-w-7xl mx-auto px-4 py-4 flex justify-between items-center">
             <div className="flex items-center gap-4">
@@ -147,7 +240,6 @@ export default function BoardDetail() {
           </div>
         </header>
 
-        {/* Main Content */}
         <main className="max-w-full mx-auto px-4 py-8">
           {error && (
             <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
@@ -155,14 +247,9 @@ export default function BoardDetail() {
             </div>
           )}
 
-          {/* Lists Grid */}
           <div className="flex gap-6 overflow-x-auto pb-6">
             {lists.map((list, index) => (
-              <div
-                key={list.id}
-                className="flex-shrink-0 w-80 bg-white rounded-lg shadow p-4"
-              >
-                {/* List Header */}
+              <div key={list.id} className="flex-shrink-0 w-80 bg-white rounded-lg shadow p-4">
                 {editingListId === list.id ? (
                   <div className="flex gap-2 mb-4">
                     <input
@@ -200,7 +287,7 @@ export default function BoardDetail() {
                         ✏
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(list.id)}
+                        onClick={() => setDeleteConfirmListId(list.id)}
                         className="text-gray-500 hover:text-red-600"
                         title="Deletar"
                       >
@@ -230,8 +317,7 @@ export default function BoardDetail() {
                   </div>
                 )}
 
-                {/* Delete Confirmation */}
-                {deleteConfirmId === list.id && (
+                {deleteConfirmListId === list.id && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
                     <p className="text-sm text-red-700 mb-2">Deletar esta lista?</p>
                     <div className="flex gap-2">
@@ -242,7 +328,7 @@ export default function BoardDetail() {
                         Sim
                       </button>
                       <button
-                        onClick={() => setDeleteConfirmId(null)}
+                        onClick={() => setDeleteConfirmListId(null)}
                         className="flex-1 px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-50"
                       >
                         Não
@@ -251,14 +337,146 @@ export default function BoardDetail() {
                   </div>
                 )}
 
-                {/* Empty state for cards */}
-                <div className="text-center py-8 text-gray-500">
-                  <p className="text-sm">Nenhum card ainda</p>
+                <div className="space-y-2 mb-4 max-h-96 overflow-y-auto">
+                  {(cards.get(list.id) || []).map((card) => (
+                    <div key={card.id} className="bg-gray-50 border border-gray-200 rounded p-3">
+                      {editingCardId === card.id ? (
+                        <div className="space-y-2">
+                          <input
+                            type="text"
+                            value={editingCardTitle}
+                            onChange={(e) => setEditingCardTitle(e.target.value)}
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            autoFocus
+                          />
+                          <textarea
+                            value={editingCardDescription}
+                            onChange={(e) => setEditingCardDescription(e.target.value)}
+                            placeholder="Descrição..."
+                            className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                            rows={2}
+                          />
+                          <div className="flex gap-1">
+                            <button
+                              onClick={() => handleUpdateCard(card.id)}
+                              className="flex-1 px-2 py-1 bg-blue-900 text-white text-xs rounded hover:bg-blue-800"
+                            >
+                              Salvar
+                            </button>
+                            <button
+                              onClick={() => setEditingCardId(null)}
+                              className="flex-1 px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-100"
+                            >
+                              Cancelar
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div>
+                          <div className="flex justify-between items-start gap-2">
+                            <h4 className="font-medium text-gray-900 text-sm flex-1">{card.title}</h4>
+                            <div className="flex gap-0.5 text-xs">
+                              <button
+                                onClick={() => {
+                                  setEditingCardId(card.id);
+                                  setEditingCardTitle(card.title);
+                                  setEditingCardDescription(card.description || "");
+                                }}
+                                className="text-gray-500 hover:text-gray-900"
+                              >
+                                ✏
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmCardId(card.id)}
+                                className="text-gray-500 hover:text-red-600"
+                              >
+                                🗑
+                              </button>
+                            </div>
+                          </div>
+                          {card.description && (
+                            <p className="text-xs text-gray-600 mt-1">{card.description}</p>
+                          )}
+                          {deleteConfirmCardId === card.id && (
+                            <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
+                              <p className="text-xs text-red-700 mb-1">Deletar?</p>
+                              <div className="flex gap-1">
+                                <button
+                                  onClick={() => handleDeleteCard(card.id)}
+                                  className="flex-1 px-1 py-0.5 bg-red-600 text-white text-xs rounded hover:bg-red-700"
+                                >
+                                  Sim
+                                </button>
+                                <button
+                                  onClick={() => setDeleteConfirmCardId(null)}
+                                  className="flex-1 px-1 py-0.5 border border-gray-300 text-xs rounded hover:bg-gray-100"
+                                >
+                                  Não
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                          {lists.length > 1 && (
+                            <div className="mt-2 flex gap-1 text-xs">
+                              {lists.map((otherList) => {
+                                if (otherList.id === list.id) return null;
+                                return (
+                                  <button
+                                    key={otherList.id}
+                                    onClick={() => handleMoveCard(card.id, list.id, otherList.id)}
+                                    className="flex-1 px-1 py-0.5 border border-gray-300 rounded hover:bg-blue-50 text-gray-600"
+                                  >
+                                    → {otherList.title.slice(0, 8)}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  ))}
                 </div>
+
+                {newCardListId === list.id ? (
+                  <div className="space-y-2 border-t pt-2">
+                    <input
+                      type="text"
+                      value={newCardTitle}
+                      onChange={(e) => setNewCardTitle(e.target.value)}
+                      placeholder="Novo card..."
+                      className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
+                      autoFocus
+                    />
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleCreateCard(list.id)}
+                        className="flex-1 px-2 py-1 bg-blue-900 text-white text-sm rounded hover:bg-blue-800"
+                      >
+                        Criar
+                      </button>
+                      <button
+                        onClick={() => {
+                          setNewCardListId(null);
+                          setNewCardTitle("");
+                        }}
+                        className="flex-1 px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-50"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <button
+                    onClick={() => setNewCardListId(list.id)}
+                    className="w-full mt-2 p-2 text-gray-600 hover:bg-gray-50 rounded text-sm border border-dashed border-gray-300"
+                  >
+                    + Card
+                  </button>
+                )}
               </div>
             ))}
 
-            {/* Add New List */}
             {showNewListForm ? (
               <div className="flex-shrink-0 w-80 bg-white rounded-lg shadow p-4">
                 <input

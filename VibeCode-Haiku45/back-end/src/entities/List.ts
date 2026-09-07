@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import { Board } from "./Board";
+import { Card } from "./Card";
 
 @Entity("lists")
 export class List {
@@ -24,4 +25,7 @@ export class List {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @OneToMany(() => Card, (card) => card.list, { cascade: true })
+  cards!: Card[];
 }

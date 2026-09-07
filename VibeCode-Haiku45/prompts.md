@@ -27,3 +27,9 @@ Quero que o usuário autenticado consiga criar, ver, editar e excluir seus próp
 Quero que o usuário consiga criar, renomear, reordenar e excluir listas dentro de um quadro
 
 ---
+
+### prompt 5
+
+Quero que o usuário consiga criar, editar, excluir e mover cards entre as listas de um quadro
+
+---

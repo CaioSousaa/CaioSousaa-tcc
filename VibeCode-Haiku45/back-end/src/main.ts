@@ -5,6 +5,7 @@ import { AppDataSource } from "./database";
 import authRoutes from "./routes/authRoutes";
 import boardRoutes from "./routes/boardRoutes";
 import listRoutes from "./routes/listRoutes";
+import cardRoutes from "./routes/cardRoutes";
 
 const app = express();
 
@@ -24,6 +25,7 @@ AppDataSource.initialize()
 app.use("/api/auth", authRoutes);
 app.use("/api/boards", boardRoutes);
 app.use("/api/lists", listRoutes);
+app.use("/api/cards", cardRoutes);
 
 app.listen(3333, () => {
   console.log("Server running on port 3333");

@@ -3,6 +3,7 @@ import { DataSource } from "typeorm";
 import { User } from "./entities/User";
 import { Board } from "./entities/Board";
 import { List } from "./entities/List";
+import { Card } from "./entities/Card";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -11,7 +12,7 @@ export const AppDataSource = new DataSource({
   username: process.env.POSTGRES_USER || "postgres",
   password: process.env.POSTGRES_PASSWORD || "postgres",
   database: process.env.POSTGRES_DB || "tcc_db",
-  entities: [User, Board, List],
+  entities: [User, Board, List, Card],
   synchronize: true,
   logging: false,
 });
