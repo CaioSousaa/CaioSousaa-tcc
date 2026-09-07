@@ -1,5 +1,6 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import { User } from "./User";
+import { List } from "./List";
 
 @Entity("boards")
 export class Board {
@@ -27,4 +28,7 @@ export class Board {
 
   @UpdateDateColumn()
   updatedAt!: Date;
+
+  @OneToMany(() => List, (list) => list.board, { cascade: true })
+  lists!: List[];
 }

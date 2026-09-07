@@ -4,6 +4,7 @@ import cookieParser from "cookie-parser";
 import { AppDataSource } from "./database";
 import authRoutes from "./routes/authRoutes";
 import boardRoutes from "./routes/boardRoutes";
+import listRoutes from "./routes/listRoutes";
 
 const app = express();
 
@@ -22,6 +23,7 @@ AppDataSource.initialize()
 
 app.use("/api/auth", authRoutes);
 app.use("/api/boards", boardRoutes);
+app.use("/api/lists", listRoutes);
 
 app.listen(3333, () => {
   console.log("Server running on port 3333");

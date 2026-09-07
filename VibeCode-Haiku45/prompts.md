@@ -21,3 +21,9 @@ Quero que o usuário autenticado consiga criar, ver, editar e excluir seus próp
 Quero que o usuário autenticado consiga criar, ver, editar e excluir seus próprios quadros
 
 ---
+
+### prompt 4
+
+Quero que o usuário consiga criar, renomear, reordenar e excluir listas dentro de um quadro
+
+---

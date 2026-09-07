@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { useBoardApi, Board } from "@/hooks/useBoardApi";
 import { BoardForm } from "@/components/BoardForm";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useState, useEffect } from "react";
 
 export default function Boards() {
@@ -153,31 +154,31 @@ export default function Boards() {
               {boards.map((board) => (
                 <div
                   key={board.id}
-                  className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4"
+                  className="bg-white rounded-lg shadow hover:shadow-lg transition border-l-4 overflow-hidden"
                   style={{ borderLeftColor: board.color }}
                 >
-                  <div className="p-6">
+                  <Link href={`/boards/${board.id}`} className="block p-6 hover:bg-gray-50 transition">
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">{board.title}</h3>
                     {board.description && (
                       <p className="text-gray-600 text-sm mb-4 line-clamp-2">{board.description}</p>
                     )}
-                    <div className="flex gap-2 pt-4 border-t border-gray-200">
-                      <button
-                        onClick={() => {
-                          setEditingBoard(board);
-                          setShowForm(true);
-                        }}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded transition"
-                      >
-                        Editar
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirm(board.id)}
-                        className="flex-1 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition"
-                      >
-                        Deletar
-                      </button>
-                    </div>
+                  </Link>
+                  <div className="flex gap-2 p-4 pt-0 border-t border-gray-200">
+                    <button
+                      onClick={() => {
+                        setEditingBoard(board);
+                        setShowForm(true);
+                      }}
+                      className="flex-1 px-3 py-2 text-sm font-medium text-blue-900 hover:bg-blue-50 rounded transition"
+                    >
+                      Editar
+                    </button>
+                    <button
+                      onClick={() => setDeleteConfirm(board.id)}
+                      className="flex-1 px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded transition"
+                    >
+                      Deletar
+                    </button>
                   </div>
                 </div>
               ))}
