@@ -27,6 +27,8 @@ export default function BoardDetail() {
   const [editingListId, setEditingListId] = useState<string | null>(null);
   const [editingTitle, setEditingTitle] = useState("");
   const [deleteConfirmListId, setDeleteConfirmListId] = useState<string | null>(null);
+  const [moveCardsListId, setMoveCardsListId] = useState<string | null>(null);
+  const [moveCardsToListId, setMoveCardsToListId] = useState<string | null>(null);
 
   const [newCardListId, setNewCardListId] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState("");
@@ -96,6 +98,28 @@ export default function BoardDetail() {
     }
   };
 
+  const handleMoveAllCards = async (fromListId: string, toListId: string) => {
+    try {
+      const cardsToMove = cards.get(fromListId) || [];
+      const existingCards = cards.get(toListId) || [];
+
+      for (let i = 0; i < cardsToMove.length; i++) {
+        await moveCard(cardsToMove[i].id, toListId, existingCards.length + i);
+      }
+
+      const newCards = new Map(cards);
+      newCards.set(toListId, [...(newCards.get(toListId) || []), ...cardsToMove]);
+      newCards.delete(fromListId);
+      setCards(newCards);
+
+      setMoveCardsListId(null);
+      setMoveCardsToListId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao mover cards";
+      setError(errorMessage);
+    }
+  };
+
   const handleDeleteList = async (listId: string) => {
     try {
       await deleteList(listId);
@@ -104,6 +128,7 @@ export default function BoardDetail() {
       newCards.delete(listId);
       setCards(newCards);
       setDeleteConfirmListId(null);
+      setMoveCardsListId(null);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao deletar lista";
       setError(errorMessage);
@@ -319,21 +344,70 @@ export default function BoardDetail() {
 
                 {deleteConfirmListId === list.id && (
                   <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded">
-                    <p className="text-sm text-red-700 mb-2">Deletar esta lista?</p>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleDeleteList(list.id)}
-                        className="flex-1 px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
-                      >
-                        Sim
-                      </button>
-                      <button
-                        onClick={() => setDeleteConfirmListId(null)}
-                        className="flex-1 px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-50"
-                      >
-                        Não
-                      </button>
-                    </div>
+                    <p className="text-sm text-red-700 mb-2">
+                      Deletar "{list.title}"?
+                      {(cards.get(list.id) || []).length > 0 && (
+                        <span> ({(cards.get(list.id) || []).length} card{(cards.get(list.id) || []).length !== 1 ? 's' : ''})</span>
+                      )}
+                    </p>
+
+                    {moveCardsListId === list.id ? (
+                      <div className="mb-2 space-y-2">
+                        <p className="text-xs text-red-600">Mover cards para:</p>
+                        {lists
+                          .filter((l) => l.id !== list.id)
+                          .map((targetList) => (
+                            <button
+                              key={targetList.id}
+                              onClick={() => {
+                                handleMoveAllCards(list.id, targetList.id);
+                                handleDeleteList(list.id);
+                              }}
+                              className="w-full px-2 py-1 text-xs text-left bg-white border border-gray-300 rounded hover:bg-gray-50"
+                            >
+                              {targetList.title}
+                            </button>
+                          ))}
+                        <button
+                          onClick={() => setMoveCardsListId(null)}
+                          className="w-full px-2 py-1 text-xs border border-gray-300 rounded hover:bg-gray-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <div className="flex gap-2">
+                        {(cards.get(list.id) || []).length > 0 ? (
+                          <>
+                            <button
+                              onClick={() => setMoveCardsListId(list.id)}
+                              className="flex-1 px-2 py-1 bg-blue-600 text-white text-sm rounded hover:bg-blue-700"
+                            >
+                              Mover Cards
+                            </button>
+                            <button
+                              onClick={() => handleDeleteList(list.id)}
+                              className="flex-1 px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                            >
+                              Deletar
+                            </button>
+                          </>
+                        ) : (
+                          <button
+                            onClick={() => handleDeleteList(list.id)}
+                            className="flex-1 px-2 py-1 bg-red-600 text-white text-sm rounded hover:bg-red-700"
+                          >
+                            Deletar
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setDeleteConfirmListId(null)}
+                          className="flex-1 px-2 py-1 border border-gray-300 text-sm rounded hover:bg-gray-50"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )}
 

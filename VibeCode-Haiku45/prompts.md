@@ -33,3 +33,9 @@ Quero que o usuário consiga criar, renomear, reordenar e excluir listas dentro 
 Quero que o usuário consiga criar, editar, excluir e mover cards entre as listas de um quadro
 
 ---
+
+### prompt 6
+
+Quero que o sistema trate adequadamente o que acontece com os cards quando o usuário exclui uma lista que contém cards
+
+---
