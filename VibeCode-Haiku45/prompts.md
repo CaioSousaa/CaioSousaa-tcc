@@ -39,3 +39,9 @@ Quero que o usuário consiga criar, editar, excluir e mover cards entre as lista
 Quero que o sistema trate adequadamente o que acontece com os cards quando o usuário exclui uma lista que contém cards
 
 ---
+
+### prompt 7
+
+Quero que o usuário consiga adicionar checklists nos cards e acompanhar o progresso da tarefa
+
+---

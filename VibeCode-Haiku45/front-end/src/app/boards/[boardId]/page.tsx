@@ -4,6 +4,7 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { useBoardApi, Board } from "@/hooks/useBoardApi";
 import { useListApi, ListItem } from "@/hooks/useListApi";
 import { useCardApi, Card } from "@/hooks/useCardApi";
+import { useChecklistApi, ChecklistItem } from "@/hooks/useChecklistApi";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -15,6 +16,7 @@ export default function BoardDetail() {
   const { getBoard } = useBoardApi();
   const { getLists, createList, updateList, deleteList } = useListApi();
   const { getCards, createCard, updateCard, moveCard, deleteCard } = useCardApi();
+  const { getChecklistItems, createChecklistItem, updateChecklistItem, deleteChecklistItem } = useChecklistApi();
 
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<ListItem[]>([]);
@@ -29,6 +31,10 @@ export default function BoardDetail() {
   const [deleteConfirmListId, setDeleteConfirmListId] = useState<string | null>(null);
   const [moveCardsListId, setMoveCardsListId] = useState<string | null>(null);
   const [moveCardsToListId, setMoveCardsToListId] = useState<string | null>(null);
+
+  const [checklists, setChecklists] = useState<Map<string, ChecklistItem[]>>(new Map());
+  const [newChecklistItemCardId, setNewChecklistItemCardId] = useState<string | null>(null);
+  const [newChecklistItemTitle, setNewChecklistItemTitle] = useState("");
 
   const [newCardListId, setNewCardListId] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState("");
@@ -51,11 +57,18 @@ export default function BoardDetail() {
       setLists(listsData);
 
       const cardsMap = new Map<string, Card[]>();
+      const checklistsMap = new Map<string, ChecklistItem[]>();
       for (const list of listsData) {
         const listCards = await getCards(list.id);
         cardsMap.set(list.id, listCards);
+
+        for (const card of listCards) {
+          const cardChecklists = await getChecklistItems(card.id);
+          checklistsMap.set(card.id, cardChecklists);
+        }
       }
       setCards(cardsMap);
+      setChecklists(checklistsMap);
       setError("");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao carregar quadro";
@@ -221,6 +234,60 @@ export default function BoardDetail() {
       setCards(newCards);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao mover card";
+      setError(errorMessage);
+    }
+  };
+
+  const handleAddChecklistItem = async (cardId: string) => {
+    if (!newChecklistItemTitle.trim()) {
+      setError("Título do item é obrigatório");
+      return;
+    }
+    try {
+      const newItem = await createChecklistItem(cardId, newChecklistItemTitle);
+      const newChecklists = new Map(checklists);
+      newChecklists.set(cardId, [...(newChecklists.get(cardId) || []), newItem]);
+      setChecklists(newChecklists);
+      setNewChecklistItemTitle("");
+      setNewChecklistItemCardId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao criar item";
+      setError(errorMessage);
+    }
+  };
+
+  const handleToggleChecklistItem = async (itemId: string, currentCompleted: boolean) => {
+    try {
+      const updated = await updateChecklistItem(itemId, { completed: !currentCompleted });
+      const newChecklists = new Map(checklists);
+      for (const [cardId, items] of newChecklists) {
+        const idx = items.findIndex((i) => i.id === itemId);
+        if (idx !== -1) {
+          items[idx] = updated;
+          break;
+        }
+      }
+      setChecklists(newChecklists);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao atualizar item";
+      setError(errorMessage);
+    }
+  };
+
+  const handleDeleteChecklistItem = async (itemId: string) => {
+    try {
+      await deleteChecklistItem(itemId);
+      const newChecklists = new Map(checklists);
+      for (const [cardId, items] of newChecklists) {
+        const filtered = items.filter((i) => i.id !== itemId);
+        if (filtered.length !== items.length) {
+          newChecklists.set(cardId, filtered);
+          break;
+        }
+      }
+      setChecklists(newChecklists);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao deletar item";
       setError(errorMessage);
     }
   };
@@ -430,7 +497,75 @@ export default function BoardDetail() {
                             className="w-full px-2 py-1 border border-gray-300 rounded text-sm"
                             rows={2}
                           />
-                          <div className="flex gap-1">
+
+                          {(() => {
+                            const cardChecklists = checklists.get(card.id) || [];
+                            return (
+                              <div className="border-t pt-2">
+                                <p className="text-xs font-medium text-gray-700 mb-2">Checklist</p>
+                                <div className="space-y-1 mb-2 max-h-32 overflow-y-auto">
+                                  {cardChecklists.map((item) => (
+                                    <div key={item.id} className="flex items-center gap-2 text-xs">
+                                      <input
+                                        type="checkbox"
+                                        checked={item.completed}
+                                        onChange={() => handleToggleChecklistItem(item.id, item.completed)}
+                                        className="w-3 h-3"
+                                      />
+                                      <span
+                                        className={`flex-1 ${item.completed ? "line-through text-gray-400" : "text-gray-900"}`}
+                                      >
+                                        {item.title}
+                                      </span>
+                                      <button
+                                        onClick={() => handleDeleteChecklistItem(item.id)}
+                                        className="text-red-500 hover:text-red-700"
+                                      >
+                                        ✕
+                                      </button>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {newChecklistItemCardId === card.id ? (
+                                  <div className="flex gap-1">
+                                    <input
+                                      type="text"
+                                      value={newChecklistItemTitle}
+                                      onChange={(e) => setNewChecklistItemTitle(e.target.value)}
+                                      placeholder="Novo item..."
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={() => handleAddChecklistItem(card.id)}
+                                      className="px-2 py-1 bg-blue-900 text-white text-xs rounded hover:bg-blue-800"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setNewChecklistItemCardId(null);
+                                        setNewChecklistItemTitle("");
+                                      }}
+                                      className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-100"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setNewChecklistItemCardId(card.id)}
+                                    className="w-full px-2 py-1 text-xs border border-dashed border-gray-300 rounded hover:bg-gray-50 text-gray-600"
+                                  >
+                                    + Item
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          <div className="flex gap-1 pt-2">
                             <button
                               onClick={() => handleUpdateCard(card.id)}
                               className="flex-1 px-2 py-1 bg-blue-900 text-white text-xs rounded hover:bg-blue-800"
@@ -471,6 +606,28 @@ export default function BoardDetail() {
                           {card.description && (
                             <p className="text-xs text-gray-600 mt-1">{card.description}</p>
                           )}
+                          {(() => {
+                            const cardChecklists = checklists.get(card.id) || [];
+                            if (cardChecklists.length > 0) {
+                              const completed = cardChecklists.filter((i) => i.completed).length;
+                              const percentage = Math.round((completed / cardChecklists.length) * 100);
+                              return (
+                                <div className="mt-2 space-y-1">
+                                  <div className="flex justify-between items-center text-xs text-gray-600">
+                                    <span>Checklist: {completed}/{cardChecklists.length}</span>
+                                    <span>{percentage}%</span>
+                                  </div>
+                                  <div className="w-full bg-gray-200 rounded-full h-1.5">
+                                    <div
+                                      className="bg-green-500 h-1.5 rounded-full transition-all"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              );
+                            }
+                            return null;
+                          })()}
                           {deleteConfirmCardId === card.id && (
                             <div className="mt-2 p-2 bg-red-50 border border-red-200 rounded">
                               <p className="text-xs text-red-700 mb-1">Deletar?</p>
