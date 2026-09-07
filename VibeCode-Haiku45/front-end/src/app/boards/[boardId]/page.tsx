@@ -8,6 +8,7 @@ import { useChecklistApi, ChecklistItem } from "@/hooks/useChecklistApi";
 import { useLabelApi, Label } from "@/hooks/useLabelApi";
 import { useAssigneeApi, CardAssignee } from "@/hooks/useAssigneeApi";
 import { useMemberApi, BoardMember } from "@/hooks/useMemberApi";
+import { useCommentApi, Comment as CommentType } from "@/hooks/useCommentApi";
 import { useRouter, useParams } from "next/navigation";
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -23,6 +24,7 @@ export default function BoardDetail() {
   const { getLabels, createLabel, deleteLabel, addLabelToCard, removeLabelFromCard } = useLabelApi();
   const { getAssignees, assignUser, removeAssignee } = useAssigneeApi();
   const { getMembers, addMember } = useMemberApi();
+  const { getComments, createComment, deleteComment } = useCommentApi();
 
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<ListItem[]>([]);
@@ -52,6 +54,10 @@ export default function BoardDetail() {
   const [newLabelColor, setNewLabelColor] = useState("#3B82F6");
   const [showNewLabel, setShowNewLabel] = useState(false);
 
+  const [comments, setComments] = useState<Map<string, CommentType[]>>(new Map());
+  const [newCommentCardId, setNewCommentCardId] = useState<string | null>(null);
+  const [newCommentContent, setNewCommentContent] = useState("");
+
   const [newCardListId, setNewCardListId] = useState<string | null>(null);
   const [newCardTitle, setNewCardTitle] = useState("");
   const [editingCardId, setEditingCardId] = useState<string | null>(null);
@@ -75,6 +81,7 @@ export default function BoardDetail() {
       const cardsMap = new Map<string, Card[]>();
       const checklistsMap = new Map<string, ChecklistItem[]>();
       const assigneesMap = new Map<string, CardAssignee[]>();
+      const commentsMap = new Map<string, CommentType[]>();
 
       const labelsData = await getLabels(boardId);
       setLabels(labelsData);
@@ -92,11 +99,15 @@ export default function BoardDetail() {
 
           const cardAssignees = await getAssignees(card.id);
           assigneesMap.set(card.id, cardAssignees);
+
+          const cardComments = await getComments(card.id);
+          commentsMap.set(card.id, cardComments);
         }
       }
       setCards(cardsMap);
       setChecklists(checklistsMap);
       setAssignees(assigneesMap);
+      setComments(commentsMap);
       setError("");
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao carregar quadro";
@@ -380,6 +391,36 @@ export default function BoardDetail() {
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : "Erro ao atribuir usuário";
+      setError(errorMessage);
+    }
+  };
+
+  const handleAddComment = async (cardId: string) => {
+    if (!newCommentContent.trim()) {
+      setError("Comentário não pode estar vazio");
+      return;
+    }
+    try {
+      const newComment = await createComment(cardId, newCommentContent);
+      const newMap = new Map(comments);
+      newMap.set(cardId, [...(newMap.get(cardId) || []), newComment]);
+      setComments(newMap);
+      setNewCommentContent("");
+      setNewCommentCardId(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao adicionar comentário";
+      setError(errorMessage);
+    }
+  };
+
+  const handleDeleteComment = async (commentId: string, cardId: string) => {
+    try {
+      await deleteComment(commentId);
+      const newMap = new Map(comments);
+      newMap.set(cardId, (newMap.get(cardId) || []).filter((c) => c.id !== commentId));
+      setComments(newMap);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : "Erro ao deletar comentário";
       setError(errorMessage);
     }
   };
@@ -697,6 +738,69 @@ export default function BoardDetail() {
                                     className="w-full px-2 py-1 text-xs border border-dashed border-gray-300 rounded hover:bg-gray-50 text-gray-600"
                                   >
                                     + Item
+                                  </button>
+                                )}
+                              </div>
+                            );
+                          })()}
+
+                          {(() => {
+                            const cardComments = comments.get(card.id) || [];
+                            return (
+                              <div className="border-t pt-2">
+                                <p className="text-xs font-medium text-gray-700 mb-2">Comentários ({cardComments.length})</p>
+                                <div className="space-y-2 mb-2 max-h-24 overflow-y-auto">
+                                  {cardComments.map((comment) => (
+                                    <div key={comment.id} className="bg-gray-50 p-2 rounded text-xs">
+                                      <div className="flex justify-between items-start gap-2">
+                                        <div className="flex-1">
+                                          <p className="font-medium text-gray-900">{comment.user.name}</p>
+                                          <p className="text-gray-700">{comment.content}</p>
+                                          <p className="text-gray-500 text-xs mt-1">{new Date(comment.createdAt).toLocaleString()}</p>
+                                        </div>
+                                        <button
+                                          onClick={() => handleDeleteComment(comment.id, card.id)}
+                                          className="text-red-500 hover:text-red-700"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+
+                                {newCommentCardId === card.id ? (
+                                  <div className="flex gap-1 mb-2">
+                                    <input
+                                      type="text"
+                                      value={newCommentContent}
+                                      onChange={(e) => setNewCommentContent(e.target.value)}
+                                      placeholder="Novo comentário..."
+                                      className="flex-1 px-2 py-1 border border-gray-300 rounded text-xs"
+                                      autoFocus
+                                    />
+                                    <button
+                                      onClick={() => handleAddComment(card.id)}
+                                      className="px-2 py-1 bg-blue-900 text-white text-xs rounded hover:bg-blue-800"
+                                    >
+                                      +
+                                    </button>
+                                    <button
+                                      onClick={() => {
+                                        setNewCommentCardId(null);
+                                        setNewCommentContent("");
+                                      }}
+                                      className="px-2 py-1 border border-gray-300 text-xs rounded hover:bg-gray-100"
+                                    >
+                                      ✕
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setNewCommentCardId(card.id)}
+                                    className="w-full px-2 py-1 text-xs border border-dashed border-gray-300 rounded hover:bg-gray-50 text-gray-600 mb-2"
+                                  >
+                                    + Comentário
                                   </button>
                                 )}
                               </div>

@@ -3,6 +3,7 @@ import { List } from "./List";
 import { ChecklistItem } from "./ChecklistItem";
 import { CardAssignee } from "./CardAssignee";
 import { Label } from "./Label";
+import { Comment } from "./Comment";
 
 @Entity("cards")
 export class Card {
@@ -40,4 +41,7 @@ export class Card {
   @ManyToMany(() => Label, (label) => label.cards)
   @JoinTable({ name: "card_labels" })
   labels!: Label[];
+
+  @OneToMany(() => Comment, (comment) => comment.card, { cascade: true })
+  comments!: Comment[];
 }

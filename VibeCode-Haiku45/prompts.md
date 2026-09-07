@@ -57,3 +57,9 @@ Quero que o administrador do quadro consiga convidar e gerenciar membros com pap
 Quero que o usuário consiga criar etiquetas coloridas e filtrar os cards por elas
 
 ---
+
+### prompt 10
+
+Quero que o usuário consiga comentar nos cards e ver o histórico dos comentários
+
+---

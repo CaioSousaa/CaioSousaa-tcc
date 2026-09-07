@@ -10,6 +10,7 @@ import checklistRoutes from "./routes/checklistRoutes";
 import memberRoutes from "./routes/memberRoutes";
 import assigneeRoutes from "./routes/assigneeRoutes";
 import labelRoutes from "./routes/labelRoutes";
+import commentRoutes from "./routes/commentRoutes";
 
 const app = express();
 
@@ -34,6 +35,7 @@ app.use("/api/checklist", checklistRoutes);
 app.use("/api/members", memberRoutes);
 app.use("/api/assignees", assigneeRoutes);
 app.use("/api/labels", labelRoutes);
+app.use("/api/comments", commentRoutes);
 
 app.listen(3333, () => {
   console.log("Server running on port 3333");
