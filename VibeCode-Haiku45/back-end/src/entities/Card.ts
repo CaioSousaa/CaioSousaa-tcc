@@ -1,7 +1,8 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
+import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany, ManyToMany, JoinTable } from "typeorm";
 import { List } from "./List";
 import { ChecklistItem } from "./ChecklistItem";
 import { CardAssignee } from "./CardAssignee";
+import { Label } from "./Label";
 
 @Entity("cards")
 export class Card {
@@ -35,4 +36,8 @@ export class Card {
 
   @OneToMany(() => CardAssignee, (assignee) => assignee.card, { cascade: true })
   assignees!: CardAssignee[];
+
+  @ManyToMany(() => Label, (label) => label.cards)
+  @JoinTable({ name: "card_labels" })
+  labels!: Label[];
 }

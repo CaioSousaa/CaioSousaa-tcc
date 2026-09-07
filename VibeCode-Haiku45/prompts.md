@@ -51,3 +51,9 @@ Quero que o usuário consiga adicionar checklists nos cards e acompanhar o progr
 Quero que o administrador do quadro consiga convidar e gerenciar membros com papéis diferentes, e atribuí-los a cards
 
 ---
+
+### prompt 9
+
+Quero que o usuário consiga criar etiquetas coloridas e filtrar os cards por elas
+
+---
