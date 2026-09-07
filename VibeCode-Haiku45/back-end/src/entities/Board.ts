@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import { User } from "./User";
 import { List } from "./List";
+import { BoardMember } from "./BoardMember";
 
 @Entity("boards")
 export class Board {
@@ -31,4 +32,7 @@ export class Board {
 
   @OneToMany(() => List, (list) => list.board, { cascade: true })
   lists!: List[];
+
+  @OneToMany(() => BoardMember, (member) => member.board, { cascade: true })
+  members!: BoardMember[];
 }

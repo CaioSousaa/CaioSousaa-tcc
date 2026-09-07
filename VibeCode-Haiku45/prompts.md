@@ -45,3 +45,9 @@ Quero que o sistema trate adequadamente o que acontece com os cards quando o usu
 Quero que o usuário consiga adicionar checklists nos cards e acompanhar o progresso da tarefa
 
 ---
+
+### prompt 8
+
+Quero que o administrador do quadro consiga convidar e gerenciar membros com papéis diferentes, e atribuí-los a cards
+
+---

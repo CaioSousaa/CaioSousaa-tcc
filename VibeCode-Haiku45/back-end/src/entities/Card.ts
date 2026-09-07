@@ -1,6 +1,7 @@
 import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn, UpdateDateColumn, ManyToOne, JoinColumn, OneToMany } from "typeorm";
 import { List } from "./List";
 import { ChecklistItem } from "./ChecklistItem";
+import { CardAssignee } from "./CardAssignee";
 
 @Entity("cards")
 export class Card {
@@ -31,4 +32,7 @@ export class Card {
 
   @OneToMany(() => ChecklistItem, (item) => item.card, { cascade: true })
   checklistItems!: ChecklistItem[];
+
+  @OneToMany(() => CardAssignee, (assignee) => assignee.card, { cascade: true })
+  assignees!: CardAssignee[];
 }
