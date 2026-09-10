@@ -1,31 +1,36 @@
 "use client";
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { getBoardById, updateBoard, deleteBoard } from "@/lib/api";
+import { ListColumn } from "@/components/ListColumn";
+import { getBoardById, getLists, createList, updateList, reorderList, deleteList } from "@/lib/api";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, FormEvent } from "react";
+import Link from "next/link";
 
 interface Board {
   id: string;
   titulo: string;
   descricao?: string;
   corFundo: string;
-  dataCriacao: string;
-  dataAtualizacao: string;
 }
 
-function BoardDetailsContent() {
+interface List {
+  id: string;
+  titulo: string;
+  ordem: number;
+}
+
+function BoardViewContent() {
   const router = useRouter();
   const params = useParams();
   const boardId = params.id as string;
 
   const [board, setBoard] = useState<Board | null>(null);
-  const [titulo, setTitulo] = useState("");
-  const [descricao, setDescricao] = useState("");
-  const [corFundo, setCorFundo] = useState("#3b82f6");
-  const [error, setError] = useState("");
+  const [lists, setLists] = useState<List[]>([]);
   const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [novaLista, setNovaLista] = useState("");
 
   useEffect(() => {
     loadBoard();
@@ -33,11 +38,11 @@ function BoardDetailsContent() {
 
   async function loadBoard() {
     try {
-      const response = await getBoardById(boardId);
-      setBoard(response.data);
-      setTitulo(response.data.titulo);
-      setDescricao(response.data.descricao || "");
-      setCorFundo(response.data.corFundo);
+      const boardResp = await getBoardById(boardId);
+      setBoard(boardResp.data);
+
+      const listsResp = await getLists(boardId);
+      setLists(listsResp.data);
       setError("");
     } catch (err) {
       setError("Quadro não encontrado");
@@ -46,42 +51,51 @@ function BoardDetailsContent() {
     }
   }
 
-  async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+  async function handleCreateList(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setError("");
-    setSaving(true);
+
+    if (!novaLista.trim()) {
+      setError("Nome da lista não pode estar vazio");
+      return;
+    }
 
     try {
-      if (!titulo.trim()) {
-        setError("Título é obrigatório");
-        setSaving(false);
-        return;
-      }
-
-      if (titulo.length > 100) {
-        setError("Título deve ter no máximo 100 caracteres");
-        setSaving(false);
-        return;
-      }
-
-      const updated = await updateBoard(boardId, titulo, descricao || undefined, corFundo);
-      setBoard(updated.data);
-      setError("");
+      const resp = await createList(boardId, novaLista);
+      setLists([...lists, resp.data]);
+      setNovaLista("");
+      setShowCreateForm(false);
     } catch (err) {
-      setError("Erro ao atualizar quadro");
-    } finally {
-      setSaving(false);
+      setError("Erro ao criar lista");
     }
   }
 
-  async function handleDelete() {
-    if (!confirm("Tem certeza que deseja deletar este quadro?")) return;
+  async function handleRename(listId: string, novoTitulo: string) {
+    try {
+      const resp = await updateList(boardId, listId, novoTitulo);
+      setLists(lists.map((l) => (l.id === listId ? resp.data : l)));
+    } catch (err) {
+      setError("Erro ao renomear lista");
+    }
+  }
+
+  async function handleDelete(listId: string) {
+    if (!confirm("Tem certeza que deseja deletar esta lista?")) return;
 
     try {
-      await deleteBoard(boardId);
-      router.push("/boards");
+      await deleteList(boardId, listId);
+      setLists(lists.filter((l) => l.id !== listId));
     } catch (err) {
-      setError("Erro ao deletar quadro");
+      setError("Erro ao deletar lista");
+    }
+  }
+
+  async function handleReorder(listId: string, novaOrdem: number) {
+    try {
+      await reorderList(boardId, listId, novaOrdem);
+      await loadBoard();
+    } catch (err) {
+      setError("Erro ao reordenar lista");
     }
   }
 
@@ -95,9 +109,9 @@ function BoardDetailsContent() {
     return (
       <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-black">
         <header className="bg-white dark:bg-zinc-900 shadow">
-          <nav className="max-w-6xl mx-auto px-4 py-4">
+          <nav className="max-w-full mx-auto px-4 py-4">
             <button
-              onClick={() => router.back()}
+              onClick={() => router.push("/boards")}
               className="text-blue-600 hover:underline"
             >
               ← Voltar
@@ -120,110 +134,108 @@ function BoardDetailsContent() {
   }
 
   return (
-    <div className="flex flex-col min-h-screen bg-zinc-50 dark:bg-black">
+    <div
+      className="flex flex-col min-h-screen"
+      style={{ backgroundColor: board.corFundo }}
+    >
       <header className="bg-white dark:bg-zinc-900 shadow">
-        <nav className="max-w-6xl mx-auto px-4 py-4">
-          <button
-            onClick={() => router.push("/boards")}
-            className="text-blue-600 hover:underline"
+        <nav className="max-w-full mx-auto px-4 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/boards")}
+              className="text-blue-600 hover:underline"
+            >
+              ← Voltar
+            </button>
+            <h1 className="text-2xl font-bold text-black dark:text-white">
+              {board.titulo}
+            </h1>
+          </div>
+          <Link
+            href={`/boards/${boardId}/settings`}
+            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium transition"
           >
-            ← Voltar
-          </button>
+            Configurações
+          </Link>
         </nav>
       </header>
 
-      <main className="flex-1 max-w-2xl mx-auto w-full px-4 py-8">
-        <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-8">
-          <h1 className="text-3xl font-bold mb-6 text-black dark:text-white">
-            Editar Quadro
-          </h1>
+      <main className="flex-1 px-4 py-8 overflow-x-auto">
+        {error && (
+          <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded">
+            {error}
+          </div>
+        )}
 
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded">
-              {error}
-            </div>
-          )}
+        <div className="flex gap-6 pb-8">
+          {lists.map((list, index) => (
+            <ListColumn
+              key={list.id}
+              list={list}
+              onRename={handleRename}
+              onDelete={handleDelete}
+              onReorderUp={async () => {
+                if (index > 0) await handleReorder(list.id, index);
+              }}
+              onReorderDown={async () => {
+                if (index < lists.length - 1) await handleReorder(list.id, index + 2);
+              }}
+            />
+          ))}
 
-          <form onSubmit={handleSubmit}>
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                Título *
-              </label>
-              <input
-                type="text"
-                value={titulo}
-                onChange={(e) => setTitulo(e.target.value)}
-                maxLength={100}
-                required
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-              <p className="text-xs text-zinc-500 mt-1">{titulo.length}/100</p>
-            </div>
-
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                Descrição
-              </label>
-              <textarea
-                value={descricao}
-                onChange={(e) => setDescricao(e.target.value)}
-                rows={4}
-                className="w-full px-4 py-2 border border-zinc-300 dark:border-zinc-700 rounded-md bg-white dark:bg-zinc-800 text-black dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-              />
-            </div>
-
-            <div className="mb-6">
-              <label className="block text-sm font-medium text-black dark:text-white mb-2">
-                Cor de Fundo
-              </label>
-              <div className="flex gap-4 items-center">
+          <div className="min-w-[300px]">
+            {showCreateForm ? (
+              <form
+                onSubmit={handleCreateList}
+                className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-4"
+              >
                 <input
-                  type="color"
-                  value={corFundo}
-                  onChange={(e) => setCorFundo(e.target.value)}
-                  className="h-12 w-20 rounded-md cursor-pointer"
+                  type="text"
+                  value={novaLista}
+                  onChange={(e) => setNovaLista(e.target.value)}
+                  maxLength={50}
+                  placeholder="Nome da nova lista"
+                  autoFocus
+                  className="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-700 rounded bg-white dark:bg-zinc-800 text-black dark:text-white mb-3"
                 />
-                <div
-                  className="h-12 w-32 rounded-md shadow-md"
-                  style={{ backgroundColor: corFundo }}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4">
+                <div className="flex gap-2">
+                  <button
+                    type="submit"
+                    className="flex-1 px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded text-sm font-medium"
+                  >
+                    Criar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowCreateForm(false);
+                      setNovaLista("");
+                    }}
+                    className="flex-1 px-3 py-2 border border-zinc-300 dark:border-zinc-700 text-black dark:text-white rounded text-sm hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                  >
+                    Cancelar
+                  </button>
+                </div>
+              </form>
+            ) : (
               <button
-                type="submit"
-                disabled={saving}
-                className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-md font-medium transition"
+                onClick={() => setShowCreateForm(true)}
+                className="w-full px-4 py-3 bg-white/50 dark:bg-zinc-900/50 hover:bg-white/70 dark:hover:bg-zinc-900/70 rounded-lg shadow-md font-medium text-black dark:text-white transition"
               >
-                {saving ? "Salvando..." : "Salvar"}
+                + Nova Lista
               </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                className="flex-1 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-md font-medium transition"
-              >
-                Deletar
-              </button>
-              <button
-                type="button"
-                onClick={() => router.push("/boards")}
-                className="flex-1 px-4 py-2 border border-zinc-300 dark:border-zinc-700 text-black dark:text-white rounded-md font-medium hover:bg-zinc-50 dark:hover:bg-zinc-800 transition"
-              >
-                Cancelar
-              </button>
-            </div>
-          </form>
+            )}
+          </div>
         </div>
       </main>
     </div>
   );
 }
 
-export default function BoardDetailsPage() {
+export default function BoardViewPage() {
   return (
     <ProtectedRoute>
-      <BoardDetailsContent />
+      <BoardViewContent />
     </ProtectedRoute>
   );
 }

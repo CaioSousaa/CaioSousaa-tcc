@@ -82,3 +82,23 @@ export async function updateBoard(
 export async function deleteBoard(id: string) {
   return api.delete(`/boards/${id}`);
 }
+
+export async function getLists(boardId: string) {
+  return api.get(`/boards/${boardId}/lists`);
+}
+
+export async function createList(boardId: string, titulo: string) {
+  return api.post(`/boards/${boardId}/lists`, { titulo });
+}
+
+export async function updateList(boardId: string, listId: string, titulo: string) {
+  return api.patch(`/boards/${boardId}/lists/${listId}`, { titulo });
+}
+
+export async function reorderList(boardId: string, listId: string, novaOrdem: number) {
+  return api.patch(`/boards/${boardId}/lists/${listId}/reorder`, { novaOrdem });
+}
+
+export async function deleteList(boardId: string, listId: string) {
+  return api.delete(`/boards/${boardId}/lists/${listId}`);
+}
