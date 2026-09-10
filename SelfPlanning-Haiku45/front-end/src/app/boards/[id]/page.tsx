@@ -2,7 +2,20 @@
 
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ListColumn } from "@/components/ListColumn";
-import { getBoardById, getLists, createList, updateList, reorderList, deleteList } from "@/lib/api";
+import { CardItem } from "@/components/CardItem";
+import { CardModal } from "@/components/CardModal";
+import {
+  getBoardById,
+  getLists,
+  getCards,
+  createList,
+  updateList,
+  reorderList,
+  deleteList,
+  createCard,
+  updateCard,
+  deleteCard,
+} from "@/lib/api";
 import { useRouter, useParams } from "next/navigation";
 import { useEffect, useState, FormEvent } from "react";
 import Link from "next/link";
@@ -20,6 +33,14 @@ interface List {
   ordem: number;
 }
 
+interface Card {
+  id: string;
+  titulo: string;
+  descricao?: string;
+  ordem: number;
+  listaId: string;
+}
+
 function BoardViewContent() {
   const router = useRouter();
   const params = useParams();
@@ -27,10 +48,14 @@ function BoardViewContent() {
 
   const [board, setBoard] = useState<Board | null>(null);
   const [lists, setLists] = useState<List[]>([]);
+  const [cards, setCards] = useState<Record<string, Card[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [novaLista, setNovaLista] = useState("");
+  const [modalCard, setModalCard] = useState<Card | null>(null);
+  const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [savingCard, setSavingCard] = useState(false);
 
   useEffect(() => {
     loadBoard();
@@ -43,6 +68,13 @@ function BoardViewContent() {
 
       const listsResp = await getLists(boardId);
       setLists(listsResp.data);
+
+      const cardsMap: Record<string, Card[]> = {};
+      for (const list of listsResp.data) {
+        const cardsResp = await getCards(boardId, list.id);
+        cardsMap[list.id] = cardsResp.data;
+      }
+      setCards(cardsMap);
       setError("");
     } catch (err) {
       setError("Quadro não encontrado");
@@ -96,6 +128,52 @@ function BoardViewContent() {
       await loadBoard();
     } catch (err) {
       setError("Erro ao reordenar lista");
+    }
+  }
+
+  function handleOpenCardModal(listId: string, card?: Card) {
+    setSelectedListId(listId);
+    setModalCard(card || null);
+  }
+
+  async function handleSaveCard(titulo: string, descricao?: string) {
+    if (!selectedListId) return;
+
+    setSavingCard(true);
+    try {
+      if (modalCard?.id) {
+        const resp = await updateCard(boardId, selectedListId, modalCard.id, titulo, descricao);
+        setCards({
+          ...cards,
+          [selectedListId]: cards[selectedListId].map((c) => (c.id === modalCard.id ? resp.data : c)),
+        });
+      } else {
+        const resp = await createCard(boardId, selectedListId, titulo, descricao);
+        setCards({
+          ...cards,
+          [selectedListId]: [...(cards[selectedListId] || []), resp.data],
+        });
+      }
+      setModalCard(null);
+      setSelectedListId(null);
+    } catch (err) {
+      setError("Erro ao salvar cartão");
+    } finally {
+      setSavingCard(false);
+    }
+  }
+
+  async function handleDeleteCard(listId: string, cardId: string) {
+    if (!confirm("Tem certeza que deseja deletar este cartão?")) return;
+
+    try {
+      await deleteCard(boardId, listId, cardId);
+      setCards({
+        ...cards,
+        [listId]: cards[listId].filter((c) => c.id !== cardId),
+      });
+    } catch (err) {
+      setError("Erro ao deletar cartão");
     }
   }
 
@@ -180,7 +258,17 @@ function BoardViewContent() {
               onReorderDown={async () => {
                 if (index < lists.length - 1) await handleReorder(list.id, index + 2);
               }}
-            />
+              onCreateCard={handleOpenCardModal}
+            >
+              {(cards[list.id] || []).map((card) => (
+                <CardItem
+                  key={card.id}
+                  card={card}
+                  onEdit={() => handleOpenCardModal(list.id, card)}
+                  onDelete={() => handleDeleteCard(list.id, card.id)}
+                />
+              ))}
+            </ListColumn>
           ))}
 
           <div className="min-w-[300px]">
@@ -228,6 +316,17 @@ function BoardViewContent() {
           </div>
         </div>
       </main>
+
+      <CardModal
+        card={modalCard}
+        isOpen={selectedListId !== null}
+        onClose={() => {
+          setModalCard(null);
+          setSelectedListId(null);
+        }}
+        onSubmit={handleSaveCard}
+        loading={savingCard}
+      />
     </div>
   );
 }

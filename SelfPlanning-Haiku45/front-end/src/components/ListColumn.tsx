@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, ReactNode } from "react";
 
 interface List {
   id: string;
@@ -10,18 +10,22 @@ interface List {
 
 interface ListColumnProps {
   list: List;
+  children?: ReactNode;
   onRename: (listId: string, novoTitulo: string) => Promise<void>;
   onDelete: (listId: string) => Promise<void>;
   onReorderUp: () => Promise<void>;
   onReorderDown: () => Promise<void>;
+  onCreateCard?: (listId: string) => void;
 }
 
 export function ListColumn({
   list,
+  children,
   onRename,
   onDelete,
   onReorderUp,
   onReorderDown,
+  onCreateCard,
 }: ListColumnProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [titulo, setTitulo] = useState(list.titulo);
@@ -36,7 +40,7 @@ export function ListColumn({
   }
 
   return (
-    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-4 min-w-[300px] flex flex-col">
+    <div className="bg-white dark:bg-zinc-900 rounded-lg shadow-md p-4 min-w-75 flex flex-col max-h-[80vh]">
       <div className="flex justify-between items-center mb-4">
         {isEditing ? (
           <input
@@ -88,10 +92,16 @@ export function ListColumn({
         </div>
       </div>
 
-      <div className="flex-1 bg-zinc-50 dark:bg-zinc-800 rounded p-3">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400 text-center py-8">
-          Listas de cartões em breve
-        </p>
+      <div className="flex-1 bg-zinc-50 dark:bg-zinc-800 rounded p-3 overflow-y-auto">
+        {children}
+        {onCreateCard && (
+          <button
+            onClick={() => onCreateCard(list.id)}
+            className="w-full mt-2 py-2 text-sm text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded transition"
+          >
+            + Novo cartão
+          </button>
+        )}
       </div>
     </div>
   );

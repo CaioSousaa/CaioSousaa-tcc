@@ -6,6 +6,7 @@ import { AppDataSource } from "./database";
 import authRoutes from "./routes/auth";
 import boardRoutes from "./routes/boards";
 import listsRoutes from "./routes/lists";
+import cardsRoutes from "./routes/cards";
 
 const app = express();
 
@@ -15,6 +16,7 @@ app.use(cors());
 app.use("/auth", authRoutes);
 app.use("/boards", boardRoutes);
 app.use("/boards/:boardId/lists", listsRoutes);
+app.use("/boards/:boardId/lists/:listId/cards", cardsRoutes);
 
 async function startServer() {
   try {

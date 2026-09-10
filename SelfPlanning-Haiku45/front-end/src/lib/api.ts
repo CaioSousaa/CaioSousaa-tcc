@@ -102,3 +102,42 @@ export async function reorderList(boardId: string, listId: string, novaOrdem: nu
 export async function deleteList(boardId: string, listId: string) {
   return api.delete(`/boards/${boardId}/lists/${listId}`);
 }
+
+export async function getCards(boardId: string, listId: string) {
+  return api.get(`/boards/${boardId}/lists/${listId}/cards`);
+}
+
+export async function getCardById(boardId: string, listId: string, cardId: string) {
+  return api.get(`/boards/${boardId}/lists/${listId}/cards/${cardId}`);
+}
+
+export async function createCard(boardId: string, listId: string, titulo: string, descricao?: string) {
+  return api.post(`/boards/${boardId}/lists/${listId}/cards`, { titulo, descricao });
+}
+
+export async function updateCard(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  titulo?: string,
+  descricao?: string
+) {
+  return api.patch(`/boards/${boardId}/lists/${listId}/cards/${cardId}`, { titulo, descricao });
+}
+
+export async function moveCard(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  novaListaId: string,
+  novaOrdem?: number
+) {
+  return api.patch(`/boards/${boardId}/lists/${listId}/cards/${cardId}/move`, {
+    novaListaId,
+    novaOrdem,
+  });
+}
+
+export async function deleteCard(boardId: string, listId: string, cardId: string) {
+  return api.delete(`/boards/${boardId}/lists/${listId}/cards/${cardId}`);
+}
