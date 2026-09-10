@@ -4,6 +4,7 @@ import express from "express";
 import cors from "cors";
 import { AppDataSource } from "./database";
 import authRoutes from "./routes/auth";
+import boardRoutes from "./routes/boards";
 
 const app = express();
 
@@ -11,6 +12,7 @@ app.use(express.json());
 app.use(cors());
 
 app.use("/auth", authRoutes);
+app.use("/boards", boardRoutes);
 
 async function startServer() {
   try {

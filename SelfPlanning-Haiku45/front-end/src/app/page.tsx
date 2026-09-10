@@ -35,12 +35,17 @@ function HomeContent() {
           <h2 className="text-3xl font-bold mb-4 text-black dark:text-white">
             Bem-vindo, {user?.nome}!
           </h2>
-          <p className="text-zinc-600 dark:text-zinc-400 mb-4">
+          <p className="text-zinc-600 dark:text-zinc-400 mb-6">
             Email: {user?.email}
           </p>
-          <p className="text-zinc-600 dark:text-zinc-400">
-            Você está autenticado e pode acessar o aplicativo.
-          </p>
+          <div className="flex gap-4">
+            <a
+              href="/boards"
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md font-medium transition inline-block"
+            >
+              Meus Quadros
+            </a>
+          </div>
         </div>
       </main>
     </div>

@@ -1,6 +1,7 @@
 import "reflect-metadata";
 import { DataSource } from "typeorm";
 import { User } from "./entities/User";
+import { Board } from "./entities/Board";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -11,5 +12,5 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB || "tcc_db",
   synchronize: true,
   logging: true,
-  entities: [User],
+  entities: [User, Board],
 });

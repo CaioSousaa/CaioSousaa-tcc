@@ -57,3 +57,28 @@ export async function getMe() {
 export async function logout() {
   return api.post("/auth/logout");
 }
+
+export async function getBoards() {
+  return api.get("/boards");
+}
+
+export async function getBoardById(id: string) {
+  return api.get(`/boards/${id}`);
+}
+
+export async function createBoard(titulo: string, descricao?: string, corFundo?: string) {
+  return api.post("/boards", { titulo, descricao, corFundo });
+}
+
+export async function updateBoard(
+  id: string,
+  titulo?: string,
+  descricao?: string,
+  corFundo?: string
+) {
+  return api.patch(`/boards/${id}`, { titulo, descricao, corFundo });
+}
+
+export async function deleteBoard(id: string) {
+  return api.delete(`/boards/${id}`);
+}
