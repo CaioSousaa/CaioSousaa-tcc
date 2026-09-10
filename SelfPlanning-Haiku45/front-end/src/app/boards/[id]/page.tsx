@@ -112,11 +112,20 @@ function BoardViewContent() {
   }
 
   async function handleDelete(listId: string) {
-    if (!confirm("Tem certeza que deseja deletar esta lista?")) return;
+    const cardsCount = (cards[listId] || []).length;
+    const message =
+      cardsCount > 0
+        ? `Esta lista tem ${cardsCount} cartão${cardsCount !== 1 ? "s" : ""}. Tem certeza que deseja deletar?`
+        : "Tem certeza que deseja deletar esta lista?";
+
+    if (!confirm(message)) return;
 
     try {
       await deleteList(boardId, listId);
       setLists(lists.filter((l) => l.id !== listId));
+      const newCards = { ...cards };
+      delete newCards[listId];
+      setCards(newCards);
     } catch (err) {
       setError("Erro ao deletar lista");
     }

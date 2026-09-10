@@ -2,11 +2,13 @@ import { Router, Response } from "express";
 import { AppDataSource } from "../database";
 import { List } from "../entities/List";
 import { Board } from "../entities/Board";
+import { Card } from "../entities/Card";
 import { verifyToken, AuthRequest } from "../middleware/auth";
 
 const router = Router({ mergeParams: true });
 const listRepository = AppDataSource.getRepository(List);
 const boardRepository = AppDataSource.getRepository(Board);
+const cardRepository = AppDataSource.getRepository(Card);
 
 function validateTitle(titulo: unknown): boolean {
   if (typeof titulo !== "string") return false;
@@ -277,6 +279,11 @@ router.delete(
         return;
       }
 
+      // Count cards before deletion
+      const cardsCount = await cardRepository.count({
+        where: { listaId: listId },
+      });
+
       const ordemDeletada = list.ordem;
 
       await listRepository.remove(list);
@@ -288,7 +295,7 @@ router.delete(
         .andWhere("ordem > :ordemDeletada", { ordemDeletada })
         .execute();
 
-      res.status(204).send();
+      res.json({ cardsDeleted: cardsCount });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Erro ao deletar lista" });
