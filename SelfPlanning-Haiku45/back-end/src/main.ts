@@ -10,6 +10,9 @@ import cardsRoutes from "./routes/cards";
 import checklistItemsRoutes from "./routes/checklist-items";
 import boardMembersRoutes from "./routes/board-members";
 import cardAssigneesRoutes from "./routes/card-assignees";
+import labelsRoutes from "./routes/labels";
+import cardLabelsRoutes from "./routes/card-labels";
+import commentsRoutes from "./routes/comments";
 
 const app = express();
 
@@ -19,10 +22,13 @@ app.use(cors());
 app.use("/auth", authRoutes);
 app.use("/boards", boardRoutes);
 app.use("/boards/:boardId/members", boardMembersRoutes);
+app.use("/boards/:boardId/labels", labelsRoutes);
 app.use("/boards/:boardId/lists", listsRoutes);
 app.use("/boards/:boardId/lists/:listId/cards", cardsRoutes);
 app.use("/boards/:boardId/lists/:listId/cards/:cardId/checklist-items", checklistItemsRoutes);
 app.use("/boards/:boardId/lists/:listId/cards/:cardId/assignees", cardAssigneesRoutes);
+app.use("/boards/:boardId/lists/:listId/cards/:cardId/labels", cardLabelsRoutes);
+app.use("/boards/:boardId/lists/:listId/cards/:cardId/comments", commentsRoutes);
 
 async function startServer() {
   try {

@@ -7,6 +7,9 @@ import { Card } from "./entities/Card";
 import { ChecklistItem } from "./entities/ChecklistItem";
 import { BoardMember } from "./entities/BoardMember";
 import { CardAssignee } from "./entities/CardAssignee";
+import { Label } from "./entities/Label";
+import { CardLabel } from "./entities/CardLabel";
+import { Comment } from "./entities/Comment";
 
 export const AppDataSource = new DataSource({
   type: "postgres",
@@ -17,5 +20,5 @@ export const AppDataSource = new DataSource({
   database: process.env.POSTGRES_DB || "tcc_db",
   synchronize: true,
   logging: true,
-  entities: [User, Board, List, Card, ChecklistItem, BoardMember, CardAssignee],
+  entities: [User, Board, List, Card, ChecklistItem, BoardMember, CardAssignee, Label, CardLabel, Comment],
 });

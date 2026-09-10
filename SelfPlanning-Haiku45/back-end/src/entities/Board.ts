@@ -5,9 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   JoinColumn,
 } from "typeorm";
 import { User } from "./User";
+import { Label } from "./Label";
 
 @Entity("boards")
 export class Board {
@@ -35,4 +37,7 @@ export class Board {
 
   @UpdateDateColumn()
   dataAtualizacao!: Date;
+
+  @OneToMany(() => Label, (label) => label.board, { onDelete: "CASCADE" })
+  labels!: Label[];
 }

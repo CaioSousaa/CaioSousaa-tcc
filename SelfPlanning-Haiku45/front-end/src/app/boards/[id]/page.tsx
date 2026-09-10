@@ -4,10 +4,14 @@ import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { ListColumn } from "@/components/ListColumn";
 import { CardItem } from "@/components/CardItem";
 import { CardModal } from "@/components/CardModal";
+import LabelFilter from "@/components/LabelFilter";
+import BoardLabels from "@/components/BoardLabels";
+import CardLabelModal from "@/components/CardLabelModal";
 import {
   getBoardById,
   getLists,
   getCards,
+  getCardsWithLabelFilter,
   createList,
   updateList,
   reorderList,
@@ -33,12 +37,19 @@ interface List {
   ordem: number;
 }
 
+interface Label {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
 interface Card {
   id: string;
   titulo: string;
   descricao?: string;
   ordem: number;
   listaId: string;
+  labels?: Label[];
 }
 
 function BoardViewContent() {
@@ -56,10 +67,14 @@ function BoardViewContent() {
   const [modalCard, setModalCard] = useState<Card | null>(null);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
   const [savingCard, setSavingCard] = useState(false);
+  const [filterLabelIds, setFilterLabelIds] = useState<string[]>([]);
+  const [showBoardLabels, setShowBoardLabels] = useState(false);
+  const [showCardLabelModal, setShowCardLabelModal] = useState(false);
+  const [cardLabelModalData, setCardLabelModalData] = useState<{ listId: string; cardId: string } | null>(null);
 
   useEffect(() => {
     loadBoard();
-  }, [boardId]);
+  }, [boardId, filterLabelIds]);
 
   async function loadBoard() {
     try {
@@ -71,7 +86,9 @@ function BoardViewContent() {
 
       const cardsMap: Record<string, Card[]> = {};
       for (const list of listsResp.data) {
-        const cardsResp = await getCards(boardId, list.id);
+        const cardsResp = filterLabelIds.length > 0
+          ? await getCardsWithLabelFilter(boardId, list.id, filterLabelIds)
+          : await getCards(boardId, list.id);
         cardsMap[list.id] = cardsResp.data;
       }
       setCards(cardsMap);
@@ -145,13 +162,13 @@ function BoardViewContent() {
     setModalCard(card || null);
   }
 
-  async function handleSaveCard(titulo: string, descricao?: string) {
+  async function handleSaveCard(titulo: string, descricao?: string, dataPrazo?: string) {
     if (!selectedListId) return;
 
     setSavingCard(true);
     try {
       if (modalCard?.id) {
-        const resp = await updateCard(boardId, selectedListId, modalCard.id, titulo, descricao);
+        const resp = await updateCard(boardId, selectedListId, modalCard.id, titulo, descricao, dataPrazo);
         setCards({
           ...cards,
           [selectedListId]: cards[selectedListId].map((c) => (c.id === modalCard.id ? resp.data : c)),
@@ -184,6 +201,17 @@ function BoardViewContent() {
     } catch (err) {
       setError("Erro ao deletar cartão");
     }
+  }
+
+  function handleOpenCardLabelModal(listId: string, cardId: string) {
+    setCardLabelModalData({ listId, cardId });
+    setShowCardLabelModal(true);
+  }
+
+  function handleCloseCardLabelModal() {
+    setShowCardLabelModal(false);
+    setCardLabelModalData(null);
+    loadBoard();
   }
 
   if (loading) {
@@ -238,13 +266,24 @@ function BoardViewContent() {
               {board.titulo}
             </h1>
           </div>
-          <Link
-            href={`/boards/${boardId}/settings`}
-            className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium transition"
-          >
-            Configurações
-          </Link>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowBoardLabels(true)}
+              className="px-4 py-2 bg-purple-600 hover:bg-purple-700 text-white rounded-md font-medium transition"
+            >
+              Etiquetas
+            </button>
+            <Link
+              href={`/boards/${boardId}/settings`}
+              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-md font-medium transition"
+            >
+              Configurações
+            </Link>
+          </div>
         </nav>
+        <div className="px-4 py-3 bg-gray-50 dark:bg-zinc-800 border-t border-gray-200 dark:border-zinc-700">
+          <LabelFilter boardId={boardId} onFilterChange={setFilterLabelIds} />
+        </div>
       </header>
 
       <main className="flex-1 px-4 py-8 overflow-x-auto">
@@ -275,6 +314,7 @@ function BoardViewContent() {
                   card={card}
                   onEdit={() => handleOpenCardModal(list.id, card)}
                   onDelete={() => handleDeleteCard(list.id, card.id)}
+                  onEditLabels={() => handleOpenCardLabelModal(list.id, card.id)}
                 />
               ))}
             </ListColumn>
@@ -335,7 +375,22 @@ function BoardViewContent() {
         }}
         onSubmit={handleSaveCard}
         loading={savingCard}
+        boardId={boardId}
+        listId={selectedListId || ""}
       />
+
+      {showBoardLabels && (
+        <BoardLabels boardId={boardId} onClose={() => setShowBoardLabels(false)} />
+      )}
+
+      {showCardLabelModal && cardLabelModalData && (
+        <CardLabelModal
+          boardId={boardId}
+          listId={cardLabelModalData.listId}
+          cardId={cardLabelModalData.cardId}
+          onClose={handleCloseCardLabelModal}
+        />
+      )}
     </div>
   );
 }

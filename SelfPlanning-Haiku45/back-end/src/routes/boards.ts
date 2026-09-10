@@ -1,10 +1,17 @@
 import { Router, Response } from "express";
 import { AppDataSource } from "../database";
 import { Board } from "../entities/Board";
+import { Card } from "../entities/Card";
+import { List } from "../entities/List";
+import { BoardMember } from "../entities/BoardMember";
+import { PrazoStatus } from "../entities/Card";
 import { verifyToken, AuthRequest } from "../middleware/auth";
 
 const router = Router();
 const boardRepository = AppDataSource.getRepository(Board);
+const cardRepository = AppDataSource.getRepository(Card);
+const listRepository = AppDataSource.getRepository(List);
+const boardMemberRepository = AppDataSource.getRepository(BoardMember);
 
 function validateTitle(titulo: unknown): boolean {
   if (typeof titulo !== "string") return false;
@@ -168,6 +175,71 @@ router.delete(
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Erro ao deletar quadro" });
+    }
+  }
+);
+
+router.get(
+  "/:boardId/cards-atrasados",
+  verifyToken,
+  async (req: AuthRequest, res: Response) => {
+    try {
+      if (!req.userId) {
+        res.status(401).json({ error: "Usuário não autenticado" });
+        return;
+      }
+
+      const boardId = Array.isArray(req.params.boardId)
+        ? req.params.boardId[0]
+        : req.params.boardId;
+
+      if (!boardId) {
+        res.status(400).json({ error: "ID do quadro inválido" });
+        return;
+      }
+
+      const board = await boardRepository.findOne({ where: { id: boardId } });
+      if (!board) {
+        res.status(404).json({ error: "Quadro não encontrado" });
+        return;
+      }
+
+      const isBoardOwner = board.usuarioId === req.userId;
+      const isMember = await boardMemberRepository.findOne({
+        where: { boardId, userId: req.userId },
+      });
+
+      if (!isBoardOwner && !isMember) {
+        res.status(403).json({ error: "Acesso negado" });
+        return;
+      }
+
+      const lists = await listRepository.find({ where: { quadroId: boardId } });
+      const listIds = lists.map((l) => l.id);
+
+      const allCards = await cardRepository.find({
+        where: { listaId: listIds as any },
+      });
+
+      const atrasados = allCards
+        .filter((card) => {
+          const status = card.getStatusPrazo();
+          return status === PrazoStatus.ATRASADO;
+        })
+        .sort((a, b) => {
+          const dataA = a.dataPrazo?.getTime() || 0;
+          const dataB = b.dataPrazo?.getTime() || 0;
+          return dataA - dataB;
+        })
+        .map((card) => ({
+          ...card,
+          statusPrazo: card.getStatusPrazo(),
+        }));
+
+      res.json(atrasados);
+    } catch (error) {
+      console.error(error);
+      res.status(500).json({ error: "Erro ao listar cartões atrasados" });
     }
   }
 );

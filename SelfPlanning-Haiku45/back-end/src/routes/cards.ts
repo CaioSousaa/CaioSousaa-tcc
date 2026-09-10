@@ -1,12 +1,15 @@
 import { Router, Response } from "express";
+import { In } from "typeorm";
 import { AppDataSource } from "../database";
 import { Card } from "../entities/Card";
+import { CardLabel } from "../entities/CardLabel";
 import { List } from "../entities/List";
 import { Board } from "../entities/Board";
 import { verifyToken, AuthRequest } from "../middleware/auth";
 
 const router = Router({ mergeParams: true });
 const cardRepository = AppDataSource.getRepository(Card);
+const cardLabelRepository = AppDataSource.getRepository(CardLabel);
 const listRepository = AppDataSource.getRepository(List);
 const boardRepository = AppDataSource.getRepository(Board);
 
@@ -118,12 +121,43 @@ router.get("/", verifyToken, async (req: AuthRequest, res: Response) => {
       return;
     }
 
-    const cards = await cardRepository.find({
+    const labelsParam = req.query.labels as string | undefined;
+    let cards = await cardRepository.find({
       where: { listaId: listId },
       order: { ordem: "ASC" },
     });
 
-    res.json(cards);
+    if (labelsParam) {
+      const labelIds = labelsParam.split(",").filter((id) => id.trim().length > 0);
+      if (labelIds.length > 0) {
+        const cardLabels = await cardLabelRepository.find({
+          where: { labelId: In(labelIds) },
+        });
+
+        const cardIdsWithLabels = new Set(cardLabels.map((cl) => cl.cardId));
+        cards = cards.filter((card) => cardIdsWithLabels.has(card.id));
+      }
+    }
+
+    const cardsWithDetails = await Promise.all(
+      cards.map(async (card) => {
+        const labels = await cardLabelRepository.find({
+          where: { cardId: card.id },
+          relations: { label: true },
+        });
+        return {
+          ...card,
+          statusPrazo: card.getStatusPrazo(),
+          labels: labels.map((cl) => ({
+            id: cl.label.id,
+            nome: cl.label.nome,
+            cor: cl.label.cor,
+          })),
+        };
+      })
+    );
+
+    res.json(cardsWithDetails);
   } catch (error) {
     console.error(error);
     res.status(500).json({ error: "Erro ao listar cartões" });
@@ -218,7 +252,7 @@ router.patch(
         return;
       }
 
-      const { titulo, descricao } = req.body;
+      const { titulo, descricao, dataPrazo } = req.body;
 
       if (titulo !== undefined) {
         if (!validateTitle(titulo)) {
@@ -232,9 +266,25 @@ router.patch(
         card.descricao = descricao || undefined;
       }
 
+      if (dataPrazo !== undefined) {
+        if (dataPrazo === null) {
+          card.dataPrazo = undefined as any;
+        } else {
+          const prazo = new Date(dataPrazo);
+          if (isNaN(prazo.getTime())) {
+            res.status(400).json({ error: "Data de prazo inválida" });
+            return;
+          }
+          card.dataPrazo = prazo;
+        }
+      }
+
       await cardRepository.save(card);
 
-      res.json(card);
+      res.json({
+        ...card,
+        statusPrazo: card.getStatusPrazo(),
+      });
     } catch (error) {
       console.error(error);
       res.status(500).json({ error: "Erro ao atualizar cartão" });

@@ -1,24 +1,37 @@
 "use client";
 
+import LabelBadge from "./LabelBadge";
+import PrazoBadge from "./PrazoBadge";
+
+interface Label {
+  id: string;
+  nome: string;
+  cor: string;
+}
+
 interface Card {
   id: string;
   titulo: string;
   descricao?: string;
+  dataPrazo?: string;
+  statusPrazo?: string;
   checklistProgress?: {
     total: number;
     completed: number;
     percentage: number;
   };
+  labels?: Label[];
 }
 
 interface CardItemProps {
   card: Card;
   onEdit: (card: Card) => void;
   onDelete: (cardId: string) => void;
+  onEditLabels?: (cardId: string) => void;
   onDragStart?: (e: React.DragEvent, cardId: string, listaId: string) => void;
 }
 
-export function CardItem({ card, onEdit, onDelete, onDragStart }: CardItemProps) {
+export function CardItem({ card, onEdit, onDelete, onEditLabels, onDragStart }: CardItemProps) {
   return (
     <div
       draggable
@@ -34,6 +47,18 @@ export function CardItem({ card, onEdit, onDelete, onDragStart }: CardItemProps)
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
               {card.descricao}
             </p>
+          )}
+          {card.dataPrazo && (
+            <div className="mt-2">
+              <PrazoBadge dataPrazo={card.dataPrazo} />
+            </div>
+          )}
+          {card.labels && card.labels.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1">
+              {card.labels.map((label) => (
+                <LabelBadge key={label.id} nome={label.nome} cor={label.cor} />
+              ))}
+            </div>
           )}
           {card.checklistProgress && card.checklistProgress.total > 0 && (
             <div className="mt-2 flex items-center gap-1">
@@ -63,6 +88,15 @@ export function CardItem({ card, onEdit, onDelete, onDragStart }: CardItemProps)
           >
             ✎
           </button>
+          {onEditLabels && (
+            <button
+              onClick={() => onEditLabels(card.id)}
+              className="p-1 text-xs bg-purple-100 dark:bg-purple-900/50 hover:bg-purple-200 dark:hover:bg-purple-900 text-purple-600 dark:text-purple-400 rounded"
+              title="Editar Etiquetas"
+            >
+              🏷
+            </button>
+          )}
           <button
             onClick={() => onDelete(card.id)}
             className="p-1 text-xs bg-red-100 dark:bg-red-900/30 hover:bg-red-200 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 rounded"

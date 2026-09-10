@@ -120,9 +120,10 @@ export async function updateCard(
   listId: string,
   cardId: string,
   titulo?: string,
-  descricao?: string
+  descricao?: string,
+  dataPrazo?: string
 ) {
-  return api.patch(`/boards/${boardId}/lists/${listId}/cards/${cardId}`, { titulo, descricao });
+  return api.patch(`/boards/${boardId}/lists/${listId}/cards/${cardId}`, { titulo, descricao, dataPrazo });
 }
 
 export async function moveCard(
@@ -184,4 +185,63 @@ export async function deleteChecklistItem(
   return api.delete(
     `/boards/${boardId}/lists/${listId}/cards/${cardId}/checklist-items/${itemId}`
   );
+}
+
+export async function getLabels(boardId: string) {
+  return api.get(`/boards/${boardId}/labels`);
+}
+
+export async function createLabel(boardId: string, nome: string, cor: string) {
+  return api.post(`/boards/${boardId}/labels`, { nome, cor });
+}
+
+export async function updateLabel(boardId: string, labelId: string, nome?: string, cor?: string) {
+  return api.patch(`/boards/${boardId}/labels/${labelId}`, { nome, cor });
+}
+
+export async function deleteLabel(boardId: string, labelId: string) {
+  return api.delete(`/boards/${boardId}/labels/${labelId}`);
+}
+
+export async function getCardLabels(boardId: string, listId: string, cardId: string) {
+  return api.get(`/boards/${boardId}/lists/${listId}/cards/${cardId}/labels`);
+}
+
+export async function addCardLabel(boardId: string, listId: string, cardId: string, labelId: string) {
+  return api.post(`/boards/${boardId}/lists/${listId}/cards/${cardId}/labels`, { labelId });
+}
+
+export async function removeCardLabel(boardId: string, listId: string, cardId: string, labelId: string) {
+  return api.delete(`/boards/${boardId}/lists/${listId}/cards/${cardId}/labels/${labelId}`);
+}
+
+export async function getCardsWithLabelFilter(boardId: string, listId: string, labelIds?: string[]) {
+  const params = labelIds && labelIds.length > 0 ? { labels: labelIds.join(",") } : {};
+  return api.get(`/boards/${boardId}/lists/${listId}/cards`, { params });
+}
+
+export async function getComments(boardId: string, listId: string, cardId: string) {
+  return api.get(`/boards/${boardId}/lists/${listId}/cards/${cardId}/comments`);
+}
+
+export async function createComment(boardId: string, listId: string, cardId: string, texto: string) {
+  return api.post(`/boards/${boardId}/lists/${listId}/cards/${cardId}/comments`, { texto });
+}
+
+export async function updateComment(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  commentId: string,
+  texto: string
+) {
+  return api.patch(`/boards/${boardId}/lists/${listId}/cards/${cardId}/comments/${commentId}`, { texto });
+}
+
+export async function deleteComment(boardId: string, listId: string, cardId: string, commentId: string) {
+  return api.delete(`/boards/${boardId}/lists/${listId}/cards/${cardId}/comments/${commentId}`);
+}
+
+export async function getCardsAtrasados(boardId: string) {
+  return api.get(`/boards/${boardId}/cards-atrasados`);
 }
