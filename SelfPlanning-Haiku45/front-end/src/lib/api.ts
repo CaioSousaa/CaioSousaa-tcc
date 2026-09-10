@@ -141,3 +141,47 @@ export async function moveCard(
 export async function deleteCard(boardId: string, listId: string, cardId: string) {
   return api.delete(`/boards/${boardId}/lists/${listId}/cards/${cardId}`);
 }
+
+export async function getChecklistItems(
+  boardId: string,
+  listId: string,
+  cardId: string
+) {
+  return api.get(`/boards/${boardId}/lists/${listId}/cards/${cardId}/checklist-items`);
+}
+
+export async function createChecklistItem(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  titulo: string
+) {
+  return api.post(`/boards/${boardId}/lists/${listId}/cards/${cardId}/checklist-items`, {
+    titulo,
+  });
+}
+
+export async function updateChecklistItem(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  itemId: string,
+  concluido?: boolean,
+  titulo?: string
+) {
+  return api.patch(
+    `/boards/${boardId}/lists/${listId}/cards/${cardId}/checklist-items/${itemId}`,
+    { concluido, titulo }
+  );
+}
+
+export async function deleteChecklistItem(
+  boardId: string,
+  listId: string,
+  cardId: string,
+  itemId: string
+) {
+  return api.delete(
+    `/boards/${boardId}/lists/${listId}/cards/${cardId}/checklist-items/${itemId}`
+  );
+}

@@ -4,6 +4,11 @@ interface Card {
   id: string;
   titulo: string;
   descricao?: string;
+  checklistProgress?: {
+    total: number;
+    completed: number;
+    percentage: number;
+  };
 }
 
 interface CardItemProps {
@@ -22,13 +27,32 @@ export function CardItem({ card, onEdit, onDelete, onDragStart }: CardItemProps)
     >
       <div className="flex justify-between items-start gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-medium text-black dark:text-white text-sm break-words">
+          <p className="font-medium text-black dark:text-white text-sm wrap-break-word">
             {card.titulo}
           </p>
           {card.descricao && (
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 line-clamp-2">
               {card.descricao}
             </p>
+          )}
+          {card.checklistProgress && card.checklistProgress.total > 0 && (
+            <div className="mt-2 flex items-center gap-1">
+              <div className="flex-1 h-1 bg-zinc-200 dark:bg-zinc-600 rounded-full overflow-hidden">
+                <div
+                  className={`h-full ${
+                    card.checklistProgress.percentage >= 75
+                      ? "bg-green-500"
+                      : card.checklistProgress.percentage >= 50
+                        ? "bg-yellow-500"
+                        : "bg-red-500"
+                  }`}
+                  style={{ width: `${card.checklistProgress.percentage}%` }}
+                />
+              </div>
+              <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                {card.checklistProgress.completed}/{card.checklistProgress.total}
+              </span>
+            </div>
           )}
         </div>
         <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition">

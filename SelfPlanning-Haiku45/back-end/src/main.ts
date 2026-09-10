@@ -7,6 +7,7 @@ import authRoutes from "./routes/auth";
 import boardRoutes from "./routes/boards";
 import listsRoutes from "./routes/lists";
 import cardsRoutes from "./routes/cards";
+import checklistItemsRoutes from "./routes/checklist-items";
 
 const app = express();
 
@@ -17,6 +18,7 @@ app.use("/auth", authRoutes);
 app.use("/boards", boardRoutes);
 app.use("/boards/:boardId/lists", listsRoutes);
 app.use("/boards/:boardId/lists/:listId/cards", cardsRoutes);
+app.use("/boards/:boardId/lists/:listId/cards/:cardId/checklist-items", checklistItemsRoutes);
 
 async function startServer() {
   try {
